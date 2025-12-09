@@ -1,0 +1,71 @@
+{
+  "tcp_mode": "server",
+  "matlab_server_ip": "127.0.0.1",
+  "matlab_server_port": 5000,
+  
+  "devices": {
+    "ars": {
+      "enabled": true,
+      "matlab_ports": [50038, 50039, 50040, 50041, 50042, 50043, 50044, 50045, 50046, 50047, 50048, 50049],
+      "duplicate_primary_to_redundant": true,
+      "redundant_variation_percent": 0.1,
+      "output_mode": "serial",
+      "output_config": {
+        "port": "/dev/ttyUSB0",
+        "baud_rate": 115200,
+        "data_bits": 8,
+        "stop_bits": 1,
+        "parity": "N",
+        "timeout": 1.0,
+        "flow_control": "none"
+      },
+      "endianness": "little",
+      "usb_loopback_enabled": false,
+      "usb_loopback_port": "/dev/ttyUSB0",
+      "log_packets_to_file": true,
+      "packet_log_file": "ars_packets.log",
+      "status_cycling_enabled": false,
+      "status_cycle_interval": 10.0,
+      "status_scenarios": ["normal", "warning", "error"]
+    },
+    "magnetometer": {
+      "enabled": true,
+      "matlab_ports": [50050, 50051, 50052],
+      "output_mode": "can",
+      "output_config": {
+        "interface": "socketcan",
+        "channel": "can0",
+        "bitrate": 500000,
+        "timeout": 1.0
+      },
+      "endianness": "little",
+      "usb_loopback_enabled": false,
+      "usb_loopback_port": "/dev/ttyUSB1",
+      "log_packets_to_file": true,
+      "packet_log_file": "magnetometer_packets.log",
+      "status_cycling_enabled": false,
+      "status_cycle_interval": 15.0,
+      "status_scenarios": ["normal", "warning", "calibration_mode"]
+    },
+    "reaction_wheel": {
+      "enabled": true,
+      "matlab_ports": [50053, 50054, 50055, 50056],
+      "output_mode": "tcp",
+      "output_config": {
+        "target_ip": "192.168.1.200",
+        "target_port": 8000,
+        "timeout": 5.0,
+        "keepalive": true,
+        "buffer_size": 4096
+      },
+      "endianness": "little",
+      "usb_loopback_enabled": false,
+      "usb_loopback_port": "/dev/ttyUSB2",
+      "log_packets_to_file": true,
+      "packet_log_file": "reaction_wheel_packets.log",
+      "status_cycling_enabled": false,
+      "status_cycle_interval": 20.0,
+      "status_scenarios": ["normal", "warning", "error", "fault"]
+    }
+  }
+}

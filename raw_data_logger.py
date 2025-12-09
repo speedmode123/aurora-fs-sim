@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""
+Raw Data Logger for FlatSat Simulator
+Logs raw TCP data received before processing
+"""
+
+import os
+import time
+import logging
+from typing import Dict, Optional
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+class RawDataLogger:
+    """Logs raw TCP data received by the simulator"""
+    
+    def __init__(self, log_directory: str = "packet_logs"):
+        self.log_directory = log_directory
+        self.log_files: Dict[str, str] = {}
+        self.log_handles: Dict[str, object] = {}
+        
+        # Create log directory if it doesn't exist
+        os.makedirs(log_directory, exist_ok=True)
+        
+        logger.info(f"Raw data logger initialized with directory: {log_directory}")
+    
+    def setup_device_logging(self, device_name: str, log_file: str) -> bool:
+        """Setup logging for a specific device"""
+        try:
+            # Create full path
+            full_path = os.path.join(self.log_directory, log_file)
+            
+            # Open log file
+            log_handle = open(full_path, 'w')
+            log_handle.write(f"# Raw TCP Data Log for {device_name.upper()}\n")
+            log_handle.write(f"# Started: {datetime.now().isoformat()}\n")
+            log_handle.write(f"# Format: TIMESTAMP | PORT | HEX_DATA | FLOAT_VALUE\n")
+            log_handle.write(f"# {'='*80}\n")
+            log_handle.flush()
+            
+            self.log_files[device_name] = full_path
+            self.log_handles[device_name] = log_handle
+            
+            logger.info(f"Raw data logging enabled for {device_name}: {full_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to setup raw data logging for {device_name}: {e}")
+            return False
+    
+    def log_raw_data(self, device_name: str, port: int, packet_data: bytes, float_value: Optional[float] = None) -> bool:
+        """Log raw TCP data for a specific device"""
+        if device_name not in self.log_handles:
+            return False
+        
+        try:
+            log_handle = self.log_handles[device_name]
+            timestamp = datetime.now().isoformat()
+            hex_data = packet_data.hex().upper()
+            
+            # Format float value
+            float_str = f"{float_value:.10e}" if float_value is not None else "N/A"
+            
+            # Write log entry
+            log_handle.write(f"{timestamp} | {port:5d} | {hex_data} | {float_str}\n")
+            log_handle.flush()
+            
+            logger.debug(f"Logged raw data: {len(packet_data)} bytes for {device_name} on port {port}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to log raw data for {device_name}: {e}")
+            return False
+    
+    def close_device_logging(self, device_name: str):
+        """Close logging for a specific device"""
+        if device_name in self.log_handles:
+            try:
+                log_handle = self.log_handles[device_name]
+                log_handle.write(f"# Raw data logging stopped: {datetime.now().isoformat()}\n")
+                log_handle.close()
+                del self.log_handles[device_name]
+                logger.info(f"Closed raw data logging for {device_name}")
+            except Exception as e:
+                logger.error(f"Error closing raw data log for {device_name}: {e}")
+    
+    def close_all_logging(self):
+        """Close all device logging"""
+        for device_name in list(self.log_handles.keys()):
+            self.close_device_logging(device_name)
+        logger.info("All raw data logging closed")
+    
+    def get_log_summary(self) -> Dict[str, Dict[str, any]]:
+        """Get summary of all log files"""
+        summary = {}
+        
+        for device_name, log_file in self.log_files.items():
+            try:
+                if os.path.exists(log_file):
+                    stat = os.stat(log_file)
+                    summary[device_name] = {
+                        "log_file": log_file,
+                        "size_bytes": stat.st_size,
+                        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                        "active": device_name in self.log_handles
+                    }
+                else:
+                    summary[device_name] = {
+                        "log_file": log_file,
+                        "size_bytes": 0,
+                        "modified": "N/A",
+                        "active": False
+                    }
+            except Exception as e:
+                logger.error(f"Error getting raw data summary for {device_name}: {e}")
+                summary[device_name] = {
+                    "log_file": log_file,
+                    "error": str(e),
+                    "active": False
+                }
+        
+        return summary
+
+def main():
+    """Test raw data logger"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Raw Data Logger Test')
+    parser.add_argument('--log-dir', default='packet_logs', help='Log directory')
+    parser.add_argument('--test-duration', type=float, default=10.0, help='Test duration')
+    
+    args = parser.parse_args()
+    
+    # Create raw data logger
+    logger_system = RawDataLogger(args.log_dir)
+    
+    # Setup logging for test devices
+    test_devices = ['ars', 'magnetometer', 'reaction_wheel']
+    for device in test_devices:
+        logger_system.setup_device_logging(device, f"{device}_raw_data.log")
+    
+    try:
+        logger.info(f"Testing raw data logger for {args.test_duration} seconds")
+        
+        # Generate test packets
+        start_time = time.time()
+        packet_count = 0
+        
+        while time.time() - start_time < args.test_duration:
+            for device in test_devices:
+                # Generate test packet (8 bytes for float)
+                import struct
+                test_float = packet_count * 0.001
+                test_packet = struct.pack('<d', test_float)
+                
+                # Log packet
+                logger_system.log_raw_data(device, 5000 + packet_count % 100, test_packet, test_float)
+                packet_count += 1
+            
+            time.sleep(0.1)  # 100ms between packets
+        
+        # Print summary
+        logger.info("=== Raw Data Log Summary ===")
+        summary = logger_system.get_log_summary()
+        for device, info in summary.items():
+            logger.info(f"{device}: {info['size_bytes']} bytes, "
+                       f"Modified: {info['modified']}, "
+                       f"Active: {info['active']}")
+        
+    finally:
+        logger_system.close_all_logging()
+
+if __name__ == '__main__':
+    main()
