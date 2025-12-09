@@ -20,14 +20,15 @@ logger = logging.getLogger(__name__)
 @dataclass
 class USBPortConfig:
     """Configuration for USB port"""
-    port: str
+    port: str  # Required for backward compatibility with existing code
+    send_port: str  # Port to send data (e.g., ttyUSB0)
+    receive_port: str  # Port to receive looped-back data (e.g., ttyUSB1)
     baud_rate: int = 115200
     data_bits: int = 8
     stop_bits: int = 1
     parity: str = "N"
     timeout: float = 1.0
 
-@dataclass
 class LoopbackTestResult:
     """Result of loopback test"""
     device_name: str
@@ -55,9 +56,8 @@ class USBLoopbackMonitor:
         """Start monitoring all USB ports"""
         try:
             for device_name, config in self.port_configs.items():
-                # Open serial port for monitoring
                 monitor_port = serial.Serial(
-                    port=config.port,
+                    port=config.receive_port,
                     baudrate=config.baud_rate,
                     bytesize=config.data_bits,
                     stopbits=config.stop_bits,
@@ -76,7 +76,7 @@ class USBLoopbackMonitor:
                 thread.start()
                 self.monitor_threads[device_name] = thread
                 
-                logger.info(f"Started monitoring USB port {config.port} for {device_name}")
+                logger.info(f"Started monitoring {device_name}: send={config.send_port}, receive={config.receive_port}")
             
             self.running = True
             return True
@@ -103,7 +103,7 @@ class USBLoopbackMonitor:
     
     def _monitor_port(self, device_name: str, monitor_port: serial.Serial):
         """Monitor a single USB port for incoming data"""
-        logger.info(f"Monitoring USB port {monitor_port.port} for {device_name}")
+        logger.info(f"Monitoring USB receive port {monitor_port.port} for {device_name}")
         
         while self.running:
             try:
@@ -196,9 +196,8 @@ class USBLoopbackTester:
         start_time = time.time()
         
         try:
-            # Send packet to USB port
             with serial.Serial(
-                port=config.port,
+                port=config.send_port,
                 baudrate=config.baud_rate,
                 bytesize=config.data_bits,
                 stopbits=config.stop_bits,
@@ -208,7 +207,8 @@ class USBLoopbackTester:
                 
                 sender_port.write(packet_data)
                 sender_port.flush()
-                logger.info(f"Sent {len(packet_data)} bytes to {device_name} port {config.port}")
+                logger.info(f"Sent {len(packet_data)} bytes to {device_name} send port {config.send_port}")
+                logger.info(f"Expecting loopback on receive port {config.receive_port}")
                 logger.info(f"Sent data: {packet_data.hex().upper()}")
                 
                 # Wait for loopback data
@@ -221,7 +221,7 @@ class USBLoopbackTester:
                 latency_ms = (end_time - start_time) * 1000
                 
                 if received_data:
-                    logger.info(f"Received {len(received_data)} bytes from {device_name}")
+                    logger.info(f"Received {len(received_data)} bytes from {device_name} receive port")
                     logger.info(f"Received data: {received_data.hex().upper()}")
                     
                     # Check if received data matches sent data
@@ -298,19 +298,36 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='USB Loopback Test System')
-    parser.add_argument('--ars-port', default='/dev/ttyUSB0', help='ARS USB port')
-    parser.add_argument('--mag-port', default='/dev/ttyUSB1', help='Magnetometer USB port')
-    parser.add_argument('--rw-port', default='/dev/ttyUSB2', help='Reaction Wheel USB port')
+    parser.add_argument('--ars-send', default='/dev/ttyUSB0', help='ARS send port (port 1)')
+    parser.add_argument('--ars-recv', default='/dev/ttyUSB1', help='ARS receive port (port 2)')
+    parser.add_argument('--mag-send', default='/dev/ttyUSB2', help='Magnetometer send port (port 3)')
+    parser.add_argument('--mag-recv', default='/dev/ttyUSB3', help='Magnetometer receive port (port 4)')
+    parser.add_argument('--rw-send', default='/dev/ttyUSB4', help='Reaction Wheel send port (port 5)')
+    parser.add_argument('--rw-recv', default='/dev/ttyUSB5', help='Reaction Wheel receive port (port 6)')
     parser.add_argument('--baud-rate', type=int, default=115200, help='Baud rate')
     parser.add_argument('--test-duration', type=float, default=30.0, help='Test duration in seconds')
     
     args = parser.parse_args()
     
-    # Configure USB ports for each device
     device_configs = {
-        'ars': USBPortConfig(port=args.ars_port, baud_rate=args.baud_rate),
-        'magnetometer': USBPortConfig(port=args.mag_port, baud_rate=args.baud_rate),
-        'reaction_wheel': USBPortConfig(port=args.rw_port, baud_rate=args.baud_rate)
+        'ars': USBPortConfig(
+            port=args.ars_send,  # Kept for backward compatibility
+            send_port=args.ars_send, 
+            receive_port=args.ars_recv,
+            baud_rate=args.baud_rate
+        ),
+        'magnetometer': USBPortConfig(
+            port=args.mag_send,
+            send_port=args.mag_send,
+            receive_port=args.mag_recv,
+            baud_rate=args.baud_rate
+        ),
+        'reaction_wheel': USBPortConfig(
+            port=args.rw_send,
+            send_port=args.rw_send,
+            receive_port=args.rw_recv,
+            baud_rate=args.baud_rate
+        )
     }
     
     # Create test system

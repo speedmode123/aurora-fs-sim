@@ -49,21 +49,22 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DeviceConfig:
     """Configuration for a single device"""
-    enabled: bool = False
+    enabled: bool = True
     matlab_ports: List[int] = None
+    duplicate_primary_to_redundant: bool = False  # ARS only
+    redundant_variation_percent: float = 0.1  # ARS only
     output_mode: str = "serial"  # serial, can, tcp
-    output_config: Dict[str, Any] = None
-    endianness: str = "little"  # little, big
-    duplicate_primary_to_redundant: bool = False  # For ARS: duplicate primary to redundant
-    redundant_variation_percent: float = 0.1  # For ARS: variation percentage
+    output_config: Dict = None  # Output-specific configuration
+    endianness: str = "little"  # little or big
     usb_loopback_enabled: bool = False  # Enable USB loopback testing
-    usb_loopback_port: str = ""  # USB port for loopback testing
+    usb_loopback_send_port: str = ""  # USB port for sending data
+    usb_loopback_receive_port: str = ""  # USB port for receiving looped-back data
     log_packets_to_file: bool = False  # Log sent packets to file when loopback disabled
     packet_log_file: str = ""  # File path for packet logging
     status_cycling_enabled: bool = False  # Enable status cycling
     status_cycle_interval: float = 10.0  # Status cycle interval in seconds
     status_scenarios: List[str] = None  # List of status scenarios
-    
+
     def __post_init__(self):
         if self.matlab_ports is None:
             self.matlab_ports = []
@@ -139,11 +140,21 @@ class FlatSatDeviceSimulator:
         
         for device_name, device_config in self.config.devices.items():
             if device_config.enabled:
-                if device_config.usb_loopback_enabled and device_config.usb_loopback_port:
-                    loopback_devices[device_name] = USBPortConfig(
-                        port=device_config.usb_loopback_port,
-                        baud_rate=device_config.output_config.get("baud_rate", 115200)
-                    )
+                if device_config.usb_loopback_enabled:
+                    # Use new send/receive ports if available, otherwise fall back to single port
+                    send_port = device_config.usb_loopback_send_port
+                    receive_port = device_config.usb_loopback_receive_port
+                    
+                    if send_port and receive_port:
+                        loopback_devices[device_name] = USBPortConfig(
+                            port=send_port,  # Backward compatibility
+                            send_port=send_port,
+                            receive_port=receive_port,
+                            baud_rate=device_config.output_config.get("baud_rate", 115200)
+                        )
+                        logger.info(f"USB loopback for {device_name}: send={send_port}, receive={receive_port}")
+                    else:
+                        logger.error(f"USB loopback enabled for {device_name} but send_port or receive_port not configured")
                 
                 if device_config.log_packets_to_file and device_config.packet_log_file:
                     logging_devices[device_name] = device_config.packet_log_file
@@ -157,7 +168,7 @@ class FlatSatDeviceSimulator:
         if logging_devices:
             logger.info(f"Initializing packet logger for devices: {list(logging_devices.keys())}")
             self.packet_logger = PacketLogger()
-            
+
             for device_name, log_file in logging_devices.items():
                 self.packet_logger.setup_device_logging(device_name, log_file)
     
@@ -459,15 +470,16 @@ def load_config(config_file: str) -> SimulatorConfig:
         devices = {}
         for device_name, device_data in config_data.get("devices", {}).items():
             device_config = DeviceConfig(
-                enabled=device_data.get("enabled", False),
+                enabled=device_data.get("enabled", True),
                 matlab_ports=device_data.get("matlab_ports", []),
+                duplicate_primary_to_redundant=device_data.get("duplicate_primary_to_redundant", False),
+                redundant_variation_percent=device_data.get("redundant_variation_percent", 0.1),
                 output_mode=device_data.get("output_mode", "serial"),
                 output_config=device_data.get("output_config", {}),
                 endianness=device_data.get("endianness", "little"),
-                duplicate_primary_to_redundant=device_data.get("duplicate_primary_to_redundant", False),
-                redundant_variation_percent=device_data.get("redundant_variation_percent", 0.1),
                 usb_loopback_enabled=device_data.get("usb_loopback_enabled", False),
-                usb_loopback_port=device_data.get("usb_loopback_port", ""),
+                usb_loopback_send_port=device_data.get("usb_loopback_send_port", ""),
+                usb_loopback_receive_port=device_data.get("usb_loopback_receive_port", ""),
                 log_packets_to_file=device_data.get("log_packets_to_file", False),
                 packet_log_file=device_data.get("packet_log_file", ""),
                 status_cycling_enabled=device_data.get("status_cycling_enabled", False),

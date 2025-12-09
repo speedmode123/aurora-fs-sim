@@ -28,4 +28,3 @@ while True:
     monitor.write(b'0')
     print("Writing something to /dev/ttyUSB0")
     time.sleep(1)
-    

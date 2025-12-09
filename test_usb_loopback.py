@@ -74,11 +74,28 @@ def create_test_packets():
 def main():
     """Main test function"""
     
-    # Configure USB ports for each device
+    # Port 1 (ttyUSB0) sends -> Port 2 (ttyUSB1) receives
+    # Port 3 (ttyUSB2) sends -> Port 4 (ttyUSB3) receives
+    # Port 5 (ttyUSB4) sends -> Port 6 (ttyUSB5) receives
     device_configs = {
-        'ars': USBPortConfig(port='/dev/ttyUSB0', baud_rate=115200),
-        'magnetometer': USBPortConfig(port='/dev/ttyUSB1', baud_rate=115200),
-        'reaction_wheel': USBPortConfig(port='/dev/ttyUSB2', baud_rate=115200)
+        'ars': USBPortConfig(
+            port='/dev/ttyUSB0',  # Kept for backward compatibility
+            send_port='/dev/ttyUSB0',
+            receive_port='/dev/ttyUSB1',
+            baud_rate=115200
+        ),
+        'magnetometer': USBPortConfig(
+            port='/dev/ttyUSB2',
+            send_port='/dev/ttyUSB2',
+            receive_port='/dev/ttyUSB3',
+            baud_rate=115200
+        ),
+        'reaction_wheel': USBPortConfig(
+            port='/dev/ttyUSB4',
+            send_port='/dev/ttyUSB4',
+            receive_port='/dev/ttyUSB5',
+            baud_rate=115200
+        )
     }
     
     # Create test packets
@@ -88,10 +105,10 @@ def main():
     tester = USBLoopbackTester(device_configs)
     
     logger.info("Starting USB Loopback Test Demo")
-    logger.info("Make sure USB loopback cables are connected:")
-    logger.info("  ARS: /dev/ttyUSB0 -> loopback")
-    logger.info("  Magnetometer: /dev/ttyUSB1 -> loopback")
-    logger.info("  Reaction Wheel: /dev/ttyUSB2 -> loopback")
+    logger.info("Physical loopback wiring:")
+    logger.info("  ARS: /dev/ttyUSB0 (port 1, send) -> /dev/ttyUSB1 (port 2, receive)")
+    logger.info("  Magnetometer: /dev/ttyUSB2 (port 3, send) -> /dev/ttyUSB3 (port 4, receive)")
+    logger.info("  Reaction Wheel: /dev/ttyUSB4 (port 5, send) -> /dev/ttyUSB5 (port 6, receive)")
     
     if tester.start_testing():
         try:

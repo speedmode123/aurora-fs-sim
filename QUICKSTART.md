@@ -2,22 +2,22 @@
 
 ## Installation
 
-```bash
+\`\`\`bash
 cd /Users/michaelbrooks/Desktop/Astraios/Aurora_FlatSat_v1.0
 pip install -r requirements.txt
-```
+\`\`\`
 
 ## Quick Test (No MATLAB Required)
 
 ### Step 1: Start the Simulator
-```bash
+\`\`\`bash
 python flatsat_device_simulator.py --enable-ars --debug
-```
+\`\`\`
 
 ### Step 2: In Another Terminal, Start Test Sender
-```bash
+\`\`\`bash
 python examples/matlab_tcp_sender.py --enable-ars --duration 30
-```
+\`\`\`
 
 You should see:
 - **Simulator**: Receiving data, encoding packets, sending to output
@@ -27,7 +27,7 @@ You should see:
 
 Edit `config/simulator_config.json`:
 
-```json
+\`\`\`json
 {
   "devices": {
     "ars": {
@@ -43,7 +43,7 @@ Edit `config/simulator_config.json`:
     }
   }
 }
-```
+\`\`\`
 
 ## Key Features
 
@@ -56,32 +56,32 @@ Test sender maintains precise 10ms spacing between each 8-byte float, matching M
 ## Common Use Cases
 
 ### Test ARS Only
-```bash
+\`\`\`bash
 # Simulator
 python flatsat_device_simulator.py --enable-ars
 
 # Test Sender
 python examples/matlab_tcp_sender.py --enable-ars
-```
+\`\`\`
 
 ### Test All Devices
-```bash
+\`\`\`bash
 # Simulator
 python flatsat_device_simulator.py --all-devices
 
 # Test Sender
 python examples/matlab_tcp_sender.py --all-devices
-```
+\`\`\`
 
 ### Test for Specific Duration
-```bash
+\`\`\`bash
 python examples/matlab_tcp_sender.py --enable-ars --duration 60
-```
+\`\`\`
 
 ### Test with Big Endian
-```bash
+\`\`\`bash
 python examples/matlab_tcp_sender.py --enable-ars --endianness big
-```
+\`\`\`
 
 ## Troubleshooting
 
@@ -95,10 +95,10 @@ python examples/matlab_tcp_sender.py --enable-ars --endianness big
 - Use `--debug` flag on simulator for verbose logging
 
 ### Serial Port Error
-```bash
+\`\`\`bash
 sudo usermod -a -G dialout $USER
 # Then log out and back in
-```
+\`\`\`
 
 ## Documentation
 
