@@ -1,43 +1,43 @@
- ============================================================
-2025-12-10 20:16:16,758 - INFO - Simple USB Loopback Test - Single Port Pair
-2025-12-10 20:16:16,758 - INFO - ============================================================
-2025-12-10 20:16:16,758 - INFO - 
-2025-12-10 20:16:16,758 - INFO - Physical wiring:
-2025-12-10 20:16:16,758 - INFO -   ttyUSB0 (Port 1) -> ttyUSB1 (Port 2)
-2025-12-10 20:16:16,758 - INFO -   Sender: /dev/ttyUSB0
-2025-12-10 20:16:16,759 - INFO -   Receiver: /dev/ttyUSB1
-2025-12-10 20:16:16,759 - INFO - 
-2025-12-10 20:16:16,759 - INFO - Test packet: 17 bytes
-2025-12-10 20:16:16,759 - INFO -   Hex: AA0102030405060708090A0B0C0D0E0F10
-2025-12-10 20:16:16,759 - INFO - 
-2025-12-10 20:16:16,759 - INFO - Starting loopback test...
-2025-12-10 20:16:16,759 - INFO - Starting USB Loopback Test System
-2025-12-10 20:16:16,761 - INFO - Monitoring USB receive port /dev/ttyUSB1 for ars
-2025-12-10 20:16:16,761 - INFO - Started monitoring ars: send=/dev/ttyUSB0, receive=/dev/ttyUSB1
-2025-12-10 20:16:16,762 - INFO - USB Loopback Test System started successfully
-2025-12-10 20:16:16,762 - INFO - Waiting for monitoring thread to stabilize...
-2025-12-10 20:16:17,763 - INFO - Sending packet...
-2025-12-10 20:16:17,973 - INFO - Sent 17 bytes to ars send port /dev/ttyUSB0
-2025-12-10 20:16:17,973 - INFO - Expecting loopback on receive port /dev/ttyUSB1
-2025-12-10 20:16:17,974 - INFO - Sent data: AA0102030405060708090A0B0C0D0E0F10
-2025-12-10 20:16:21,476 - WARNING - No data received from ars loopback
-2025-12-10 20:16:21,476 - WARNING - Check physical wiring: /dev/ttyUSB0 -> /dev/ttyUSB1
-2025-12-10 20:16:21,476 - WARNING - Verify baud rate: 115200
-2025-12-10 20:16:21,477 - INFO - 
-2025-12-10 20:16:21,477 - INFO - ============================================================
-2025-12-10 20:16:21,478 - INFO - Test Results
-2025-12-10 20:16:21,478 - INFO - ============================================================
-2025-12-10 20:16:21,478 - ERROR - Status: FAIL ✗
-2025-12-10 20:16:21,478 - ERROR - Sent:     AA0102030405060708090A0B0C0D0E0F10
-2025-12-10 20:16:21,479 - ERROR - Received: (none)
-2025-12-10 20:16:21,479 - ERROR - Error:    No data received from loopback - check physical wiring
-2025-12-10 20:16:21,479 - ERROR - 
-2025-12-10 20:16:21,480 - ERROR - Troubleshooting steps:
-2025-12-10 20:16:21,480 - ERROR -   1. Verify physical connection: TX0 -> RX1
-2025-12-10 20:16:21,480 - ERROR -   2. Check port permissions: ls -l /dev/ttyUSB*
-2025-12-10 20:16:21,480 - ERROR -   3. Verify baud rate matches hardware
-2025-12-10 20:16:21,481 - ERROR -   4. Try with different data patterns
-2025-12-10 20:16:21,481 - INFO - 
-2025-12-10 20:16:21,481 - INFO - Stopping USB Loopback Test System
-2025-12-10 20:16:21,483 - INFO - Stopped monitoring USB port for ars
-2025-12-10 20:16:21,483 - INFO - Test complete
+2025-12-10 20:28:14,475 - INFO - ============================================================
+2025-12-10 20:28:14,475 - INFO - Simple USB Loopback Test - Single Port Pair
+2025-12-10 20:28:14,475 - INFO - ============================================================
+2025-12-10 20:28:14,475 - INFO - 
+2025-12-10 20:28:14,475 - INFO - Physical wiring:
+2025-12-10 20:28:14,476 - INFO -   ttyUSB0 (Port 1) -> ttyUSB1 (Port 2)
+2025-12-10 20:28:14,476 - INFO -   Sender: /dev/ttyUSB0
+2025-12-10 20:28:14,476 - INFO -   Receiver: /dev/ttyUSB1
+2025-12-10 20:28:14,476 - INFO - 
+2025-12-10 20:28:14,476 - INFO - Test packet: 17 bytes
+2025-12-10 20:28:14,476 - INFO -   Hex: AA0102030405060708090A0B0C0D0E0F10
+2025-12-10 20:28:14,476 - INFO - 
+2025-12-10 20:28:14,476 - INFO - Starting loopback test...
+2025-12-10 20:28:14,477 - INFO - Starting USB Loopback Test System
+2025-12-10 20:28:14,478 - INFO - Monitoring USB receive port /dev/ttyUSB1 for ars
+2025-12-10 20:28:14,478 - INFO - Started monitoring ars: send=/dev/ttyUSB0, receive=/dev/ttyUSB1
+2025-12-10 20:28:14,479 - INFO - USB Loopback Test System started successfully
+2025-12-10 20:28:14,479 - INFO - Waiting for monitoring thread to stabilize...
+2025-12-10 20:28:15,480 - INFO - Sending packet...
+2025-12-10 20:28:15,689 - INFO - Sent 17 bytes to ars send port /dev/ttyUSB0
+2025-12-10 20:28:15,689 - INFO - Expecting loopback on receive port /dev/ttyUSB1
+2025-12-10 20:28:15,690 - INFO - Sent data: AA0102030405060708090A0B0C0D0E0F10
+2025-12-10 20:28:19,191 - WARNING - No data received from ars loopback
+2025-12-10 20:28:19,192 - WARNING - Check physical wiring: /dev/ttyUSB0 -> /dev/ttyUSB1
+2025-12-10 20:28:19,192 - WARNING - Verify baud rate: 115200
+2025-12-10 20:28:19,192 - INFO - 
+2025-12-10 20:28:19,192 - INFO - ============================================================
+2025-12-10 20:28:19,192 - INFO - Test Results
+2025-12-10 20:28:19,192 - INFO - ============================================================
+2025-12-10 20:28:19,192 - ERROR - Status: FAIL ✗
+2025-12-10 20:28:19,192 - ERROR - Sent:     AA0102030405060708090A0B0C0D0E0F10
+2025-12-10 20:28:19,192 - ERROR - Received: (none)
+2025-12-10 20:28:19,193 - ERROR - Error:    No data received from loopback - check physical wiring
+2025-12-10 20:28:19,193 - ERROR - 
+2025-12-10 20:28:19,193 - ERROR - Troubleshooting steps:
+2025-12-10 20:28:19,193 - ERROR -   1. Verify physical connection: TX0 -> RX1
+2025-12-10 20:28:19,193 - ERROR -   2. Check port permissions: ls -l /dev/ttyUSB*
+2025-12-10 20:28:19,193 - ERROR -   3. Verify baud rate matches hardware
+2025-12-10 20:28:19,193 - ERROR -   4. Try with different data patterns
+2025-12-10 20:28:19,193 - INFO - 
+2025-12-10 20:28:19,193 - INFO - Stopping USB Loopback Test System
+2025-12-10 20:28:19,194 - INFO - Stopped monitoring USB port for ars
+2025-12-10 20:28:19,194 - INFO - Test complete
