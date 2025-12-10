@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Simple USB Loopback Test - Single Port Pair
+Simple USB Loopback Test - Direct Serial Communication
 
-Tests only ttyUSB0 (send) -> ttyUSB1 (receive) loopback connection.
-Perfect for validating basic RS422 wiring with minimal setup.
+Tests ttyUSB0 (send) -> ttyUSB1 (receive) using the same approach as
+the diagnostic script that works. No threads, no queues, just direct serial I/O.
 """
 
+import serial
 import time
+import sys
 import logging
-from usb_loopback_tester import USBLoopbackTester, USBPortConfig
 
 # Configure logging
 logging.basicConfig(
@@ -19,34 +20,22 @@ logger = logging.getLogger(__name__)
 
 def create_simple_test_packet():
     """Create a simple test packet - just a recognizable pattern"""
-    test_packet = bytes([
+    return bytes([
         0xAA,  # Sync byte
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
         0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10
     ])
-    return test_packet
 
-def main():
-    """Run simple loopback test"""
+def test_simple_loopback():
+    """Test serial loopback with minimal code matching diagnostic_serial_test.py"""
     
-    logger.info("=" * 60)
-    logger.info("Simple USB Loopback Test - Single Port Pair")
-    logger.info("=" * 60)
+    logger.info("=" * 70)
+    logger.info("Simple USB Loopback Test - Direct Serial Communication")
+    logger.info("=" * 70)
     logger.info("")
     logger.info("Physical wiring:")
-    logger.info("  ttyUSB0 (Port 1) -> ttyUSB1 (Port 2)")
-    logger.info("  Sender: /dev/ttyUSB0")
-    logger.info("  Receiver: /dev/ttyUSB1")
+    logger.info("  ttyUSB0 (TX) -> ttyUSB1 (RX)")
     logger.info("")
-    
-    # Configure only the ARS device with ttyUSB0->ttyUSB1
-    device_configs = {
-        'ars': USBPortConfig(
-            send_port='/dev/ttyUSB0',
-            receive_port='/dev/ttyUSB1',
-            baud_rate=115200
-        )
-    }
     
     # Create test packet
     test_packet = create_simple_test_packet()
@@ -54,66 +43,121 @@ def main():
     logger.info(f"  Hex: {test_packet.hex().upper()}")
     logger.info("")
     
-    # Create tester
-    tester = USBLoopbackTester(device_configs)
-    
-    # Start testing
-    logger.info("Starting loopback test...")
-    if tester.start_testing():
-        try:
-            logger.info("Waiting for monitoring thread to stabilize...")
-            time.sleep(1.0)  # Give monitoring thread more time to fully start
-            
-            # Run test
-            logger.info("Sending packet...")
-            result = tester.test_device_packet('ars', test_packet)
-            
-            time.sleep(0.5)  # Give more time for data to be processed
+    try:
+        # Open both ports - exactly like diagnostic script
+        logger.info("Opening serial ports...")
+        sender = serial.Serial(
+            port='/dev/ttyUSB0',
+            baudrate=115200,
+            bytesize=8,
+            stopbits=1,
+            parity='N',
+            timeout=1.0,
+            write_timeout=1.0
+        )
+        logger.info(f"  ✓ Opened {sender.port} for sending")
+        
+        receiver = serial.Serial(
+            port='/dev/ttyUSB1',
+            baudrate=115200,
+            bytesize=8,
+            stopbits=1,
+            parity='N',
+            timeout=2.0
+        )
+        logger.info(f"  ✓ Opened {receiver.port} for receiving")
+        logger.info("")
+        
+        # Clear any existing data
+        receiver.reset_input_buffer()
+        sender.reset_output_buffer()
+        time.sleep(0.1)
+        
+        # Send data
+        logger.info(f"Sending {len(test_packet)} bytes...")
+        start_time = time.time()
+        bytes_written = sender.write(test_packet)
+        sender.flush()
+        logger.info(f"  ✓ Wrote {bytes_written} bytes to {sender.port}")
+        logger.info("")
+        
+        # Small delay for data to propagate
+        time.sleep(0.5)
+        
+        # Check what's available
+        waiting = receiver.in_waiting
+        logger.info(f"Bytes waiting in receive buffer: {waiting}")
+        logger.info("")
+        
+        # Read data
+        logger.info("Reading data...")
+        received = receiver.read(len(test_packet))
+        end_time = time.time()
+        latency_ms = (end_time - start_time) * 1000
+        
+        logger.info(f"  ✓ Read {len(received)} bytes from {receiver.port}")
+        
+        if received:
+            logger.info(f"  Received: {received.hex().upper()}")
+            logger.info("")
             
             # Display results
-            logger.info("")
-            logger.info("=" * 60)
+            logger.info("=" * 70)
             logger.info("Test Results")
-            logger.info("=" * 60)
+            logger.info("=" * 70)
+            logger.info(f"Sent:     {test_packet.hex().upper()}")
+            logger.info(f"Received: {received.hex().upper()}")
+            logger.info(f"Latency:  {latency_ms:.2f} ms")
             
-            if result.success:
-                logger.info("Status: PASS")
-                logger.info(f"Sent:     {result.sent_bytes.hex().upper()}")
-                logger.info(f"Received: {result.received_bytes.hex().upper()}")
-                logger.info(f"Latency:  {result.latency_ms:.2f} ms")
-                logger.info(f"Match:    {'Yes' if result.sent_bytes == result.received_bytes else 'No'}")
+            # Compare
+            if received == test_packet:
+                logger.info("Match:    Yes")
+                logger.info("")
+                logger.info("✓ SUCCESS - Loopback test passed!")
+                return_code = 0
             else:
-                logger.error("Status: FAIL")
-                logger.error(f"Sent:     {result.sent_bytes.hex().upper()}")
-                logger.error(f"Received: {result.received_bytes.hex().upper() if result.received_bytes else '(none)'}")
-                logger.error(f"Error:    {result.error_message}")
+                logger.error("Match:    No")
                 logger.error("")
-                logger.error("Troubleshooting steps:")
-                logger.error("  1. Run diagnostic_serial_test.py first to verify hardware")
-                logger.error("  2. Verify physical connection: TX0 -> RX1")
-                logger.error("  3. Check port permissions: ls -l /dev/ttyUSB*")
-                logger.error("  4. Verify baud rate matches hardware")
-                logger.error("  5. Check no other process is using ports: lsof | grep ttyUSB")
-            
+                logger.error("✗ FAIL - Data mismatch")
+                return_code = 1
+        else:
             logger.info("")
-            
-        except KeyboardInterrupt:
-            logger.info("\nTest interrupted by user")
-        except Exception as e:
-            logger.error(f"Test error: {e}")
-            import traceback
-            traceback.print_exc()
-        finally:
-            tester.stop_testing()
-            logger.info("Test complete")
-    else:
-        logger.error("Failed to start loopback test")
-        logger.error("Check that:")
-        logger.error("  1. /dev/ttyUSB0 and /dev/ttyUSB1 exist")
-        logger.error("  2. You have permissions (try: sudo usermod -a -G dialout $USER)")
-        logger.error("  3. No other program is using these ports")
-        logger.error("  4. Physical loopback cable is connected")
-        logger.error("  5. Run diagnostic_serial_test.py first to verify hardware works")
+            logger.error("=" * 70)
+            logger.error("✗ FAIL - No data received")
+            logger.error("=" * 70)
+            logger.error("")
+            logger.error("Troubleshooting:")
+            logger.error("  1. Check physical wiring:")
+            logger.error("     - TX pin of ttyUSB0 connected to RX pin of ttyUSB1")
+            logger.error("     - GND connected between devices if needed")
+            logger.error("  2. Verify port permissions:")
+            logger.error("     - ls -l /dev/ttyUSB*")
+            logger.error("     - sudo usermod -a -G dialout $USER")
+            logger.error("  3. Check for other processes using these ports:")
+            logger.error("     - lsof | grep ttyUSB")
+            logger.error("  4. Verify RS422 adapter is powered on")
+            logger.error("  5. Run diagnostic_serial_test.py to verify hardware")
+            return_code = 1
+        
+        # Close ports
+        sender.close()
+        receiver.close()
+        
+        return return_code
+        
+    except serial.SerialException as e:
+        logger.error(f"✗ Serial port error: {e}")
+        logger.error("")
+        logger.error("Possible causes:")
+        logger.error("  - Ports don't exist (check: ls /dev/ttyUSB*)")
+        logger.error("  - Permission denied (try: sudo chmod 666 /dev/ttyUSB*)")
+        logger.error("  - Ports in use by another process")
+        return 1
+    except Exception as e:
+        logger.error(f"✗ Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
 if __name__ == '__main__':
-    main()
+    sys.exit(test_simple_loopback())
