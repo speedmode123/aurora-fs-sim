@@ -28,6 +28,7 @@ class USBPortConfig:
     parity: str = "N"
     timeout: float = 1.0
 
+@dataclass
 class LoopbackTestResult:
     """Result of loopback test"""
     device_name: str
