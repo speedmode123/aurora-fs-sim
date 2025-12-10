@@ -207,9 +207,9 @@ class USBLoopbackTester:
                 write_timeout=config.timeout
             )
             
-            while not self.data_queues[device_name].empty():
+            while not self.monitor.data_queues[device_name].empty():
                 try:
-                    self.data_queues[device_name].get_nowait()
+                    self.monitor.data_queues[device_name].get_nowait()
                 except:
                     break
             
