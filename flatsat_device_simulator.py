@@ -29,7 +29,7 @@ from device_encoders.reaction_wheel_encoder import ReactionWheelEncoder
 from output_transmitters.serial_transmitter import SerialTransmitterManager, SerialConfig
 from output_transmitters.can_transmitter import CANTransmitterManager, CANConfig
 from output_transmitters.tcp_transmitter import TCPTransmitterManager, TCPConfig
-from usb_loopback_tester import USBLoopbackTester, USBPortConfig
+from simple_usb_loopback import SimpleUSBLoopback, USBPortConfig
 from packet_logger import PacketLogger
 from error_handler import error_handler, handle_error, ErrorType, ErrorSeverity
 from performance_monitor import performance_monitor, measure_performance
@@ -93,7 +93,7 @@ class FlatSatDeviceSimulator:
         self.tcp_receiver: Optional[TCPReceiver] = None
         self.device_encoders: Dict[str, Any] = {}
         self.output_transmitters: Dict[str, Any] = {}
-        self.usb_loopback_tester: Optional[USBLoopbackTester] = None
+        self.usb_loopback_tester: Optional[SimpleUSBLoopback] = None
         self.packet_logger: Optional[PacketLogger] = None
         self.running = False
         self.threads: List[threading.Thread] = []
@@ -102,7 +102,7 @@ class FlatSatDeviceSimulator:
         self._initialize_devices()
         
         # Initialize packet logger and USB loopback tester
-        self._initialize_logging_and_testing()
+        self._initialize_logging_and_loopback()
         
     def _initialize_devices(self):
         """Initialize enabled devices"""
@@ -132,22 +132,19 @@ class FlatSatDeviceSimulator:
                 # Initialize output transmitter
                 self._initialize_output_transmitter(device_name, device_config)
     
-    def _initialize_logging_and_testing(self):
+    def _initialize_logging_and_loopback(self):
         """Initialize packet logger and USB loopback tester based on device configurations"""
-        # Check if any device needs USB loopback testing
         loopback_devices = {}
         logging_devices = {}
         
         for device_name, device_config in self.config.devices.items():
             if device_config.enabled:
                 if device_config.usb_loopback_enabled:
-                    # Use new send/receive ports if available, otherwise fall back to single port
                     send_port = device_config.usb_loopback_send_port
                     receive_port = device_config.usb_loopback_receive_port
                     
                     if send_port and receive_port:
                         loopback_devices[device_name] = USBPortConfig(
-                            port=send_port,  # Backward compatibility
                             send_port=send_port,
                             receive_port=receive_port,
                             baud_rate=device_config.output_config.get("baud_rate", 115200)
@@ -159,10 +156,10 @@ class FlatSatDeviceSimulator:
                 if device_config.log_packets_to_file and device_config.packet_log_file:
                     logging_devices[device_name] = device_config.packet_log_file
         
-        # Initialize USB loopback tester if needed
+        # Initialize USB loopback with simple direct serial approach
         if loopback_devices:
-            logger.info(f"Initializing USB loopback tester for devices: {list(loopback_devices.keys())}")
-            self.usb_loopback_tester = USBLoopbackTester(loopback_devices)
+            logger.info(f"Initializing USB loopback for devices: {list(loopback_devices.keys())}")
+            self.usb_loopback_tester = SimpleUSBLoopback(loopback_devices)
         
         # Initialize packet logger if needed
         if logging_devices:
@@ -264,10 +261,10 @@ class FlatSatDeviceSimulator:
     def _start_usb_loopback_tester(self):
         """Start USB loopback tester if any device has it enabled"""
         if self.usb_loopback_tester:
-            if self.usb_loopback_tester.start_testing():
-                logger.info("USB loopback tester started successfully")
+            if self.usb_loopback_tester.open_ports():
+                logger.info("USB loopback ports opened successfully")
             else:
-                logger.warning("Failed to start USB loopback tester")
+                logger.warning("Failed to open USB loopback ports")
     
     def _start_data_processing(self):
         """Start data processing threads for each device"""
@@ -375,7 +372,11 @@ class FlatSatDeviceSimulator:
         
         # Test USB loopback if enabled
         if device_config.usb_loopback_enabled and self.usb_loopback_tester:
-            self.usb_loopback_tester.test_device_packet(device_name, encoded_data)
+            result = self.usb_loopback_tester.test_packet(device_name, encoded_data)
+            if result.success:
+                logger.debug(f"{device_name} loopback: {result.bytes_sent} bytes, {result.latency_ms:.2f} ms")
+            else:
+                logger.warning(f"{device_name} loopback failed: {result.error_message}")
         
         try:
             if output_mode == "serial":
@@ -418,7 +419,7 @@ class FlatSatDeviceSimulator:
         
         # Stop USB loopback tester
         if self.usb_loopback_tester:
-            self.usb_loopback_tester.stop_testing()
+            self.usb_loopback_tester.close_ports()
         
         # Close packet logger
         if self.packet_logger:
