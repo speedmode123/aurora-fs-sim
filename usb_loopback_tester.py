@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 @dataclass
 class USBPortConfig:
     """Configuration for USB port"""
-    port: str  # Required for backward compatibility with existing code
     send_port: str  # Port to send data (e.g., ttyUSB0)
     receive_port: str  # Port to receive looped-back data (e.g., ttyUSB1)
     baud_rate: int = 115200
@@ -37,6 +36,7 @@ class LoopbackTestResult:
     timestamp: float
     success: bool
     latency_ms: float
+    error_message: str = ""
 
 class USBLoopbackMonitor:
     """Monitors USB loopback ports for received data"""
@@ -189,7 +189,8 @@ class USBLoopbackTester:
                 received_bytes=b"",
                 timestamp=time.time(),
                 success=False,
-                latency_ms=0.0
+                latency_ms=0.0,
+                error_message=f"Unknown device: {device_name}"
             )
         
         config = self.device_configs[device_name]
@@ -233,7 +234,8 @@ class USBLoopbackTester:
                         received_bytes=received_data,
                         timestamp=start_time,
                         success=success,
-                        latency_ms=latency_ms
+                        latency_ms=latency_ms,
+                        error_message="" if success else "Data mismatch"
                     )
                     
                     self.test_results.append(result)
@@ -246,7 +248,8 @@ class USBLoopbackTester:
                         received_bytes=b"",
                         timestamp=start_time,
                         success=False,
-                        latency_ms=latency_ms
+                        latency_ms=latency_ms,
+                        error_message="No data received from loopback"
                     )
                     
         except Exception as e:
@@ -257,7 +260,8 @@ class USBLoopbackTester:
                 received_bytes=b"",
                 timestamp=time.time(),
                 success=False,
-                latency_ms=0.0
+                latency_ms=0.0,
+                error_message=str(e)
             )
     
     def test_all_devices(self, device_packets: Dict[str, bytes]) -> Dict[str, LoopbackTestResult]:
@@ -311,19 +315,16 @@ def main():
     
     device_configs = {
         'ars': USBPortConfig(
-            port=args.ars_send,  # Kept for backward compatibility
             send_port=args.ars_send, 
             receive_port=args.ars_recv,
             baud_rate=args.baud_rate
         ),
         'magnetometer': USBPortConfig(
-            port=args.mag_send,
             send_port=args.mag_send,
             receive_port=args.mag_recv,
             baud_rate=args.baud_rate
         ),
         'reaction_wheel': USBPortConfig(
-            port=args.rw_send,
             send_port=args.rw_send,
             receive_port=args.rw_recv,
             baud_rate=args.baud_rate

@@ -83,7 +83,7 @@ def main():
             
             # Run test
             logger.info("Sending packet...")
-            result = tester.test_device('ars', test_packet)
+            result = tester.test_device_packet('ars', test_packet)
             
             # Display results
             logger.info("")
