@@ -63,8 +63,11 @@ class USBLoopbackMonitor:
                     bytesize=config.data_bits,
                     stopbits=config.stop_bits,
                     parity=config.parity,
-                    timeout=config.timeout
+                    timeout=0.5  # Short timeout for responsive reading
                 )
+                
+                # Clear any stale data
+                monitor_port.reset_input_buffer()
                 
                 self.monitors[device_name] = monitor_port
                 
@@ -77,7 +80,7 @@ class USBLoopbackMonitor:
                 thread.start()
                 self.monitor_threads[device_name] = thread
                 
-                logger.info(f"Started monitoring {device_name}: send={config.send_port}, receive={config.receive_port}")
+                logger.info(f"Monitoring USB receive port {config.receive_port} for {device_name}")
             
             self.running = True
             return True
@@ -103,20 +106,40 @@ class USBLoopbackMonitor:
             thread.join(timeout=2.0)
     
     def _monitor_port(self, device_name: str, monitor_port: serial.Serial):
-        """Monitor a single USB port for incoming data"""
-        logger.info(f"Monitoring USB receive port {monitor_port.port} for {device_name}")
+        """
+        Monitor a single USB port for incoming data
+        Uses the same simple approach as the diagnostic script that works
+        """
+        buffer = bytearray()
         
         while self.running:
             try:
-                data = monitor_port.read(256)  # Block until data or timeout
-                
-                if data:
-                    logger.debug(f"{device_name}: Received {len(data)} bytes: {data.hex().upper()}")
-                    # Put complete packet in queue with timestamp
-                    self.data_queues[device_name].put((data, time.time()))
+                # Read whatever is available (up to 256 bytes)
+                if monitor_port.in_waiting > 0:
+                    chunk = monitor_port.read(monitor_port.in_waiting)
+                    if chunk:
+                        buffer.extend(chunk)
+                        logger.debug(f"{device_name}: Read {len(chunk)} bytes, buffer now {len(buffer)} bytes")
+                        
+                        # If we have accumulated data, send it to the queue
+                        if len(buffer) > 0:
+                            # Wait a bit to see if more data arrives
+                            time.sleep(0.05)
+                            
+                            # Check if more data arrived
+                            if monitor_port.in_waiting == 0:
+                                # No more data, send what we have
+                                complete_packet = bytes(buffer)
+                                logger.debug(f"{device_name}: Complete packet {len(complete_packet)} bytes: {complete_packet.hex().upper()}")
+                                self.data_queues[device_name].put((complete_packet, time.time()))
+                                buffer.clear()
+                else:
+                    # No data waiting, short sleep
+                    time.sleep(0.01)
                 
             except Exception as e:
-                logger.error(f"Error monitoring {device_name} port: {e}")
+                if self.running:  # Only log if we're not shutting down
+                    logger.error(f"Error monitoring {device_name} port: {e}")
                 time.sleep(0.1)
     
     def get_received_data(self, device_name: str, timeout: float = 1.0) -> Optional[bytes]:
@@ -200,30 +223,36 @@ class USBLoopbackTester:
                 bytesize=config.data_bits,
                 stopbits=config.stop_bits,
                 parity=config.parity,
-                timeout=config.timeout,
-                write_timeout=config.timeout
+                timeout=1.0,
+                write_timeout=1.0
             )
             
+            # Clear receive queue
             while not self.monitor.data_queues[device_name].empty():
                 try:
                     self.monitor.data_queues[device_name].get_nowait()
                 except:
                     break
             
-            time.sleep(0.2)
+            # Clear sender buffer
+            sender_port.reset_output_buffer()
+            time.sleep(0.1)
             
             start_time = time.time()
             
-            sender_port.write(packet_data)
+            # Send data
+            bytes_written = sender_port.write(packet_data)
             sender_port.flush()
             
-            logger.info(f"Sent {len(packet_data)} bytes to {device_name} send port {config.send_port}")
+            logger.info(f"Sent {bytes_written} bytes to {device_name} send port {config.send_port}")
             logger.info(f"Expecting loopback on receive port {config.receive_port}")
             logger.info(f"Sent data: {packet_data.hex().upper()}")
             
+            # Wait for data to propagate (match diagnostic timing)
             time.sleep(0.5)
             
-            received_data = self.monitor.get_received_data(device_name, timeout=3.0)
+            # Try to receive data
+            received_data = self.monitor.get_received_data(device_name, timeout=2.0)
             
             sender_port.close()
             
@@ -266,6 +295,8 @@ class USBLoopbackTester:
                     
         except Exception as e:
             logger.error(f"Error testing {device_name}: {e}")
+            import traceback
+            traceback.print_exc()
             return LoopbackTestResult(
                 device_name=device_name,
                 sent_bytes=packet_data,

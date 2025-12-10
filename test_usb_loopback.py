@@ -79,19 +79,16 @@ def main():
     # Port 5 (ttyUSB4) sends -> Port 6 (ttyUSB5) receives
     device_configs = {
         'ars': USBPortConfig(
-            port='/dev/ttyUSB0',  # Kept for backward compatibility
             send_port='/dev/ttyUSB0',
             receive_port='/dev/ttyUSB1',
             baud_rate=115200
         ),
         'magnetometer': USBPortConfig(
-            port='/dev/ttyUSB2',
             send_port='/dev/ttyUSB2',
             receive_port='/dev/ttyUSB3',
             baud_rate=115200
         ),
         'reaction_wheel': USBPortConfig(
-            port='/dev/ttyUSB4',
             send_port='/dev/ttyUSB4',
             receive_port='/dev/ttyUSB5',
             baud_rate=115200
@@ -112,6 +109,9 @@ def main():
     
     if tester.start_testing():
         try:
+            logger.info("Waiting for monitoring threads to stabilize...")
+            time.sleep(2)
+            
             # Test each device
             logger.info("Testing all devices...")
             results = tester.test_all_devices(test_packets)

@@ -62,11 +62,13 @@ def main():
     if tester.start_testing():
         try:
             logger.info("Waiting for monitoring thread to stabilize...")
-            time.sleep(1.0)
+            time.sleep(2.0)
             
             # Run test
             logger.info("Sending packet...")
             result = tester.test_device_packet('ars', test_packet)
+            
+            time.sleep(0.5)
             
             # Display results
             logger.info("")
@@ -75,13 +77,13 @@ def main():
             logger.info("=" * 60)
             
             if result.success:
-                logger.info("Status: PASS ✓")
+                logger.info("Status: PASS")
                 logger.info(f"Sent:     {result.sent_bytes.hex().upper()}")
                 logger.info(f"Received: {result.received_bytes.hex().upper()}")
                 logger.info(f"Latency:  {result.latency_ms:.2f} ms")
                 logger.info(f"Match:    {'Yes' if result.sent_bytes == result.received_bytes else 'No'}")
             else:
-                logger.error("Status: FAIL ✗")
+                logger.error("Status: FAIL")
                 logger.error(f"Sent:     {result.sent_bytes.hex().upper()}")
                 logger.error(f"Received: {result.received_bytes.hex().upper() if result.received_bytes else '(none)'}")
                 logger.error(f"Error:    {result.error_message}")
@@ -90,7 +92,7 @@ def main():
                 logger.error("  1. Verify physical connection: TX0 -> RX1")
                 logger.error("  2. Check port permissions: ls -l /dev/ttyUSB*")
                 logger.error("  3. Verify baud rate matches hardware")
-                logger.error("  4. Try with different data patterns")
+                logger.error("  4. Run diagnostic_serial_test.py to verify hardware")
             
             logger.info("")
             
