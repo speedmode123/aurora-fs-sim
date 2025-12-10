@@ -107,34 +107,21 @@ class USBLoopbackMonitor:
     
     def _monitor_port(self, device_name: str, monitor_port: serial.Serial):
         """
-        Monitor a single USB port for incoming data
-        Uses the same simple approach as the diagnostic script that works
+        Monitor a single USB port for incoming data.
+        Uses the EXACT same approach as the working diagnostic script.
         """
-        buffer = bytearray()
-        
         while self.running:
             try:
-                # Read whatever is available (up to 256 bytes)
+                # Check if data is available
                 if monitor_port.in_waiting > 0:
-                    chunk = monitor_port.read(monitor_port.in_waiting)
-                    if chunk:
-                        buffer.extend(chunk)
-                        logger.debug(f"{device_name}: Read {len(chunk)} bytes, buffer now {len(buffer)} bytes")
-                        
-                        # If we have accumulated data, send it to the queue
-                        if len(buffer) > 0:
-                            # Wait a bit to see if more data arrives
-                            time.sleep(0.05)
-                            
-                            # Check if more data arrived
-                            if monitor_port.in_waiting == 0:
-                                # No more data, send what we have
-                                complete_packet = bytes(buffer)
-                                logger.debug(f"{device_name}: Complete packet {len(complete_packet)} bytes: {complete_packet.hex().upper()}")
-                                self.data_queues[device_name].put((complete_packet, time.time()))
-                                buffer.clear()
+                    # Read all available data (up to buffer size)
+                    data = monitor_port.read(monitor_port.in_waiting)
+                    if data:
+                        logger.debug(f"{device_name}: Received {len(data)} bytes: {data.hex().upper()}")
+                        # Put data directly in queue with timestamp
+                        self.data_queues[device_name].put((data, time.time()))
                 else:
-                    # No data waiting, short sleep
+                    # No data, short sleep to avoid busy waiting
                     time.sleep(0.01)
                 
             except Exception as e:

@@ -62,13 +62,13 @@ def main():
     if tester.start_testing():
         try:
             logger.info("Waiting for monitoring thread to stabilize...")
-            time.sleep(2.0)
+            time.sleep(1.0)  # Give monitoring thread more time to fully start
             
             # Run test
             logger.info("Sending packet...")
             result = tester.test_device_packet('ars', test_packet)
             
-            time.sleep(0.5)
+            time.sleep(0.5)  # Give more time for data to be processed
             
             # Display results
             logger.info("")
@@ -89,10 +89,11 @@ def main():
                 logger.error(f"Error:    {result.error_message}")
                 logger.error("")
                 logger.error("Troubleshooting steps:")
-                logger.error("  1. Verify physical connection: TX0 -> RX1")
-                logger.error("  2. Check port permissions: ls -l /dev/ttyUSB*")
-                logger.error("  3. Verify baud rate matches hardware")
-                logger.error("  4. Run diagnostic_serial_test.py to verify hardware")
+                logger.error("  1. Run diagnostic_serial_test.py first to verify hardware")
+                logger.error("  2. Verify physical connection: TX0 -> RX1")
+                logger.error("  3. Check port permissions: ls -l /dev/ttyUSB*")
+                logger.error("  4. Verify baud rate matches hardware")
+                logger.error("  5. Check no other process is using ports: lsof | grep ttyUSB")
             
             logger.info("")
             
@@ -112,6 +113,7 @@ def main():
         logger.error("  2. You have permissions (try: sudo usermod -a -G dialout $USER)")
         logger.error("  3. No other program is using these ports")
         logger.error("  4. Physical loopback cable is connected")
+        logger.error("  5. Run diagnostic_serial_test.py first to verify hardware works")
 
 if __name__ == '__main__':
     main()
