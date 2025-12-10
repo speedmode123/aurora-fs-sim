@@ -106,17 +106,20 @@ class USBLoopbackMonitor:
         """Monitor a single USB port for incoming data"""
         logger.info(f"Monitoring USB receive port {monitor_port.port} for {device_name}")
         
+        buffer = bytearray()
+        
         while self.running:
             try:
-                # Read available data
-                if monitor_port.in_waiting > 0:
-                    data = monitor_port.read(monitor_port.in_waiting)
-                    if data:
-                        # Put data in queue with timestamp
-                        self.data_queues[device_name].put((data, time.time()))
-                        logger.debug(f"{device_name}: Received {len(data)} bytes: {data.hex().upper()}")
+                data = monitor_port.read(256)  # Read up to 256 bytes
+                if data:
+                    buffer.extend(data)
+                    # Put data in queue with timestamp
+                    self.data_queues[device_name].put((bytes(buffer), time.time()))
+                    logger.debug(f"{device_name}: Received {len(data)} bytes: {data.hex().upper()}")
+                    logger.info(f"[v0] {device_name} buffer now has {len(buffer)} bytes")
+                    buffer.clear()  # Clear after putting in queue
                 
-                time.sleep(0.001)  # Small delay to prevent busy waiting
+                time.sleep(0.01)
                 
             except Exception as e:
                 logger.error(f"Error monitoring {device_name} port: {e}")
