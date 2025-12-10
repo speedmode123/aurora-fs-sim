@@ -195,63 +195,77 @@ class USBLoopbackTester:
             )
         
         config = self.device_configs[device_name]
-        start_time = time.time()
         
         try:
-            with serial.Serial(
+            sender_port = serial.Serial(
                 port=config.send_port,
                 baudrate=config.baud_rate,
                 bytesize=config.data_bits,
                 stopbits=config.stop_bits,
                 parity=config.parity,
-                timeout=config.timeout
-            ) as sender_port:
+                timeout=config.timeout,
+                write_timeout=config.timeout
+            )
+            
+            while not self.data_queues[device_name].empty():
+                try:
+                    self.data_queues[device_name].get_nowait()
+                except:
+                    break
+            
+            time.sleep(0.2)
+            
+            start_time = time.time()
+            
+            sender_port.write(packet_data)
+            sender_port.flush()
+            
+            logger.info(f"Sent {len(packet_data)} bytes to {device_name} send port {config.send_port}")
+            logger.info(f"Expecting loopback on receive port {config.receive_port}")
+            logger.info(f"Sent data: {packet_data.hex().upper()}")
+            
+            time.sleep(0.5)
+            
+            received_data = self.monitor.get_received_data(device_name, timeout=3.0)
+            
+            sender_port.close()
+            
+            end_time = time.time()
+            latency_ms = (end_time - start_time) * 1000
+            
+            if received_data:
+                logger.info(f"Received {len(received_data)} bytes from {device_name} receive port")
+                logger.info(f"Received data: {received_data.hex().upper()}")
                 
-                sender_port.write(packet_data)
-                sender_port.flush()
-                logger.info(f"Sent {len(packet_data)} bytes to {device_name} send port {config.send_port}")
-                logger.info(f"Expecting loopback on receive port {config.receive_port}")
-                logger.info(f"Sent data: {packet_data.hex().upper()}")
+                # Check if received data matches sent data
+                success = received_data == packet_data
                 
-                # Wait for loopback data
-                time.sleep(0.1)  # Allow time for loopback
+                result = LoopbackTestResult(
+                    device_name=device_name,
+                    sent_bytes=packet_data,
+                    received_bytes=received_data,
+                    timestamp=start_time,
+                    success=success,
+                    latency_ms=latency_ms,
+                    error_message="" if success else "Data mismatch"
+                )
                 
-                # Get received data
-                received_data = self.monitor.get_received_data(device_name, timeout=2.0)
+                self.test_results.append(result)
+                return result
+            else:
+                logger.warning(f"No data received from {device_name} loopback")
+                logger.warning(f"Check physical wiring: {config.send_port} -> {config.receive_port}")
+                logger.warning(f"Verify baud rate: {config.baud_rate}")
                 
-                end_time = time.time()
-                latency_ms = (end_time - start_time) * 1000
-                
-                if received_data:
-                    logger.info(f"Received {len(received_data)} bytes from {device_name} receive port")
-                    logger.info(f"Received data: {received_data.hex().upper()}")
-                    
-                    # Check if received data matches sent data
-                    success = received_data == packet_data
-                    
-                    result = LoopbackTestResult(
-                        device_name=device_name,
-                        sent_bytes=packet_data,
-                        received_bytes=received_data,
-                        timestamp=start_time,
-                        success=success,
-                        latency_ms=latency_ms,
-                        error_message="" if success else "Data mismatch"
-                    )
-                    
-                    self.test_results.append(result)
-                    return result
-                else:
-                    logger.warning(f"No data received from {device_name} loopback")
-                    return LoopbackTestResult(
-                        device_name=device_name,
-                        sent_bytes=packet_data,
-                        received_bytes=b"",
-                        timestamp=start_time,
-                        success=False,
-                        latency_ms=latency_ms,
-                        error_message="No data received from loopback"
-                    )
+                return LoopbackTestResult(
+                    device_name=device_name,
+                    sent_bytes=packet_data,
+                    received_bytes=b"",
+                    timestamp=start_time,
+                    success=False,
+                    latency_ms=latency_ms,
+                    error_message="No data received from loopback - check physical wiring"
+                )
                     
         except Exception as e:
             logger.error(f"Error testing {device_name}: {e}")

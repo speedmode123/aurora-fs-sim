@@ -18,30 +18,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def create_simple_test_packet():
-    """Create a simple test packet for ARS device"""
-    # Simple ARS-format packet with recognizable pattern
-    ars_packet = bytes([
-        0x55, 0x55,  # Sync bytes
-        0x00, 0x01,  # Message counter
-        0x3F, 0x80, 0x00, 0x00,  # Prime X = 1.0 (float)
-        0x40, 0x00, 0x00, 0x00,  # Prime Y = 2.0
-        0x40, 0x40, 0x00, 0x00,  # Prime Z = 3.0
-        0x3F, 0x80, 0x00, 0x00,  # Redundant X = 1.0
-        0x40, 0x00, 0x00, 0x00,  # Redundant Y = 2.0
-        0x40, 0x40, 0x00, 0x00,  # Redundant Z = 3.0
-        0x00, 0x00, 0x00, 0x00,  # Summed Prime X
-        0x00, 0x00, 0x00, 0x00,  # Summed Prime Y
-        0x00, 0x00, 0x00, 0x00,  # Summed Prime Z
-        0x00, 0x00, 0x00, 0x00,  # Summed Redundant X
-        0x00, 0x00, 0x00, 0x00,  # Summed Redundant Y
-        0x00, 0x00, 0x00, 0x00,  # Summed Redundant Z
-        0x00, 0x01,  # Status Word 1
-        0x00, 0x02,  # Status Word 2
-        0x00, 0x03,  # Status Word 3
-        0xAB, 0xCD   # CRC-16 placeholder
+    """Create a simple test packet - just a recognizable pattern"""
+    test_packet = bytes([
+        0xAA,  # Sync byte
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10
     ])
-    
-    return ars_packet
+    return test_packet
 
 def main():
     """Run simple loopback test"""
@@ -78,8 +61,8 @@ def main():
     logger.info("Starting loopback test...")
     if tester.start_testing():
         try:
-            # Wait for ports to stabilize
-            time.sleep(0.5)
+            logger.info("Waiting for monitoring thread to stabilize...")
+            time.sleep(1.0)
             
             # Run test
             logger.info("Sending packet...")
@@ -100,8 +83,14 @@ def main():
             else:
                 logger.error("Status: FAIL ✗")
                 logger.error(f"Sent:     {result.sent_bytes.hex().upper()}")
-                logger.error(f"Received: {result.received_bytes.hex().upper()}")
+                logger.error(f"Received: {result.received_bytes.hex().upper() if result.received_bytes else '(none)'}")
                 logger.error(f"Error:    {result.error_message}")
+                logger.error("")
+                logger.error("Troubleshooting steps:")
+                logger.error("  1. Verify physical connection: TX0 -> RX1")
+                logger.error("  2. Check port permissions: ls -l /dev/ttyUSB*")
+                logger.error("  3. Verify baud rate matches hardware")
+                logger.error("  4. Try with different data patterns")
             
             logger.info("")
             
@@ -109,6 +98,8 @@ def main():
             logger.info("\nTest interrupted by user")
         except Exception as e:
             logger.error(f"Test error: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             tester.stop_testing()
             logger.info("Test complete")
