@@ -78,7 +78,16 @@ class StatusWordBuilder:
         bit_mode: int = 1,  # 0=Power-up BIT, 1=Continuous BIT, 2=Initiated BIT
         rate_sensor_failed: bool = False,
         gyro_failed: bool = False,
-        agc_voltage_failed: bool = False
+        agc_voltage_failed: bool = False,
+        # Copy Paste from Word 3 bc i think it was in the wrong section
+        gyro_a_start_run: bool = True,  # 0=Start, 1=Run
+        gyro_b_start_run: bool = True,
+        gyro_c_start_run: bool = True,
+        gyro_a_fdc: bool = False,  # 0=OK, 1=Failed
+        gyro_b_fdc: bool = False,
+        gyro_c_fdc: bool = False,
+        fdc_failed: bool = False,
+        rs_ok: bool = True  # 0=OK, 1=Failed
     ) -> int:
         """Build Status Word 1 according to Table 7"""
         word = 0
@@ -103,56 +112,6 @@ class StatusWordBuilder:
         if agc_voltage_failed:
             word |= (1 << 7)
             
-        return word & 0xFFFF
-        # I think Bit 8-15 are missing? Not sure if needed... -AS
-    
-    @staticmethod
-    def build_status_word_2(
-        gyro_temperature_a: int = 25,  # Temperature in °C (LSB=1°C)
-        motor_bias_voltage_failed: bool = False,
-        start_data_flag: bool = False,  # 0=sensor data, 1=5555h sync data
-        processor_failed: bool = False,
-        memory_failed: bool = False
-    ) -> int:
-        """Build Status Word 2 according to Table 8"""
-        word = 0
-        
-        # Bit 0-7: Gyro Temperature A (LSB=1°C)
-        word |= (gyro_temperature_a & 0xFF)
-        
-        # Bit 8: Motor Bias Voltage
-        if motor_bias_voltage_failed:
-            word |= (1 << 8)
-            
-        # Bit 9: Start data flag
-        if start_data_flag:
-            word |= (1 << 9)
-            
-        # Bit 10: Processor
-        if processor_failed:
-            word |= (1 << 10)
-            
-        # Bit 11: Memory
-        if memory_failed:
-            word |= (1 << 11)
-            
-        return word & 0xFFFF
-        # Bit 12-15 not mentioned here ? -AS
-    
-    @staticmethod
-    def build_status_word_3(
-        gyro_a_start_run: bool = True,  # 0=Start, 1=Run
-        gyro_b_start_run: bool = True,
-        gyro_c_start_run: bool = True,
-        gyro_a_fdc: bool = False,  # 0=OK, 1=Failed
-        gyro_b_fdc: bool = False,
-        gyro_c_fdc: bool = False,
-        fdc_failed: bool = False,
-        rs_ok: bool = True  # 0=OK, 1=Failed
-    ) -> int:
-        """Build Status Word 3 according to Table 9"""
-        word = 0
-        
         # Bit 8: Gyro A Start/Run
         if gyro_a_start_run:
             word |= (1 << 8)
@@ -184,6 +143,117 @@ class StatusWordBuilder:
         # Bit 15: RS OK
         if rs_ok:
             word |= (1 << 15)
+            
+        return word & 0xFFFF
+        # I think Bit 8-15 are missing? Not sure if needed... -AS
+        # I added the missing bits -AS
+    
+    @staticmethod
+    def build_status_word_2(
+        gyro_temperature_a: int = 25,  # Temperature in °C (LSB=1°C)
+        motor_bias_voltage_failed: bool = False,
+        start_data_flag: bool = False,  # 0=sensor data, 1=5555h sync data
+        processor_failed: bool = False,
+        memory_failed: bool = False,
+        #Adding Bit 12 - 15
+        asic_failed: bool = False,
+        gyro_health_failed: bool = False,
+        atp_indicator: bool = False # 0=Mode 1, 1=Mode 2
+    ) -> int:
+        """Build Status Word 2 according to Table 8"""
+        word = 0
+        
+        # Bit 0-7: Gyro Temperature A (LSB=1°C)
+        word |= (gyro_temperature_a & 0xFF)
+        
+        # Bit 8: Motor Bias Voltage
+        if motor_bias_voltage_failed:
+            word |= (1 << 8)
+            
+        # Bit 9: Start data flag
+        if start_data_flag:
+            word |= (1 << 9)
+            
+        # Bit 10: Processor
+        if processor_failed:
+            word |= (1 << 10)
+            
+        # Bit 11: Memory
+        if memory_failed:
+            word |= (1 << 11)
+
+        # Bit 12: ASIC
+        if asic_failed:
+            word |= (1 << 12)
+
+        # Bit 13: Gyro Health
+        if gyro_health_failed:
+            word |= (1 << 13)
+
+        # Bit 14: ATP Indicator
+        if atp_indicator:
+            word |= (1 << 14)
+
+        # Bit 15: Reserved, Reserved bits are always 0
+            
+        return word & 0xFFFF
+        # Bit 12-15 not mentioned here ? -AS, fixed ? _AS
+    
+    @staticmethod
+    def build_status_word_3(
+        gyro_temperature_b: int = 25,  # Temperature in °C (LSB=1°C)
+        gyro_temperature_c: int = 25,  # Temperature in °C (LSB=1°C)
+        # gyro_a_start_run: bool = True,  # 0=Start, 1=Run
+        # gyro_b_start_run: bool = True,
+        # gyro_c_start_run: bool = True,
+        # gyro_a_fdc: bool = False,  # 0=OK, 1=Failed
+        # gyro_b_fdc: bool = False,
+        # gyro_c_fdc: bool = False,
+        # fdc_failed: bool = False,
+        # rs_ok: bool = True  # 0=OK, 1=Failed
+    ) -> int:
+        """Build Status Word 3 according to Table 9"""
+        word = 0
+        
+       
+        # # Bit 8: Gyro A Start/Run
+        # if gyro_a_start_run:
+        #     word |= (1 << 8)
+            
+        # # Bit 9: Gyro B Start/Run
+        # if gyro_b_start_run:
+        #     word |= (1 << 9)
+            
+        # # Bit 10: Gyro C Start/Run
+        # if gyro_c_start_run:
+        #     word |= (1 << 10)
+            
+        # # Bit 11: Gyro A FDC
+        # if gyro_a_fdc:
+        #     word |= (1 << 11)
+            
+        # # Bit 12: Gyro B FDC
+        # if gyro_b_fdc:
+        #     word |= (1 << 12)
+            
+        # # Bit 13: Gyro C FDC
+        # if gyro_c_fdc:
+        #     word |= (1 << 13)
+            
+        # # Bit 14: FDC Failed
+        # if fdc_failed:
+        #     word |= (1 << 14)
+            
+        # # Bit 15: RS OK
+        # if rs_ok:
+        #     word |= (1 << 15)
+
+        #Adding what was actually in table 9 -AS
+        # Bit 0-7: Gyro Temperature B (LSB=1°C)
+        word |= (gyro_temperature_b & 0xFF)
+
+        # Bit 8-15: Gyro Temperature C (LSB=1°C)
+        word |= (gyro_temperature_c & 0xFF)
             
         return word & 0xFFFF
         # not sure if gyro temp b and c are supposed to be here AS
@@ -452,17 +522,7 @@ class ARSEncoder:
             rate_sensor_failed=not has_data,
             gyro_failed=has_discrepancy,
             agc_voltage_failed=False
-        )
-        
-        packet.status_word_2 = self.status_word_builder.build_status_word_2(
-            gyro_temperature_a=25,  # Simulated temperature
-            motor_bias_voltage_failed=False,
-            start_data_flag=False,
-            processor_failed=False,
-            memory_failed=False
-        )
-        
-        packet.status_word_3 = self.status_word_builder.build_status_word_3(
+            #moving this from status_word_3
             gyro_a_start_run=has_data,
             gyro_b_start_run=has_data,
             gyro_c_start_run=has_data,
@@ -471,6 +531,31 @@ class ARSEncoder:
             gyro_c_fdc=has_discrepancy,
             fdc_failed=has_discrepancy,
             rs_ok=has_data and not has_discrepancy
+        )
+        
+        packet.status_word_2 = self.status_word_builder.build_status_word_2(
+            gyro_temperature_a=25,  # Simulated temperature
+            motor_bias_voltage_failed=False,
+            start_data_flag=False,
+            processor_failed=False,
+            memory_failed=False
+            #Added in missing bits _AS
+            asic_failed=False
+            gyro_health_failed=False
+            atp_indicator=False
+        )
+        
+        packet.status_word_3 = self.status_word_builder.build_status_word_3(
+            gyro_temperature_b=25,  # Simulated temperature
+            gyro_temperature_c=25,  # Simulated temperature
+            # gyro_a_start_run=has_data,
+            # gyro_b_start_run=has_data,
+            # gyro_c_start_run=has_data,
+            # gyro_a_fdc=has_discrepancy,
+            # gyro_b_fdc=has_discrepancy,
+            # gyro_c_fdc=has_discrepancy,
+            # fdc_failed=has_discrepancy,
+            # rs_ok=has_data and not has_discrepancy
         )
     
     def encode_packet(self, packet: RateSensorPacket) -> bytes:

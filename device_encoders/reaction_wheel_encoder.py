@@ -22,6 +22,8 @@ class RWAMode(Enum):
 
 class RWAStatus(Enum):
     """RWA status codes"""
+    #Not sure where this was found, however Primary Command Has Message assigned
+    #to 0x02, 0x03, 0x04, not sure if that matters -AS
     NORMAL = 0x00
     WARNING = 0x01
     ERROR = 0x02
@@ -30,10 +32,14 @@ class RWAStatus(Enum):
 
 class RWATelemetryType(Enum):
     """RWA telemetry message types"""
+    #ICD states custom telemtry for 0x12/17
+    PRIMARY = 0x14   # -AS
     HEALTH_STATUS = 0x15
     SPEED_TELEMETRY = 0x16
     CURRENT_TELEMETRY = 0x17
     TEMPERATURE_TELEMETRY = 0x18
+    MEMORY = 0x1C # -AS
+    ENGR = 0x13 # -AS
 
 @dataclass
 class RWAData:
@@ -61,7 +67,7 @@ class RWAPacket:
 class RWAMessageEncoder:
     """Encodes RWA data into Honeywell protocol format per ICD64020011"""
     
-    def __init__(self, rwa_address: int = 0x01):
+    def __init__(self, rwa_address: int = 0x04): #RW is shipped with default addres 0x04, is this step reconfiguring?
         self.rwa_address = rwa_address
         self.sequence_counter = 0
         
@@ -94,15 +100,15 @@ class RWAMessageEncoder:
         # Reserved byte (DAT[6])
         message.append(0x00)
         
-        # Temperature (DAT[7-10]) - 32-bit float, big-endian per ICD
+        # Temperature (DAT[7-10]) - 32-bit float, big-endian per ICD # Temp should be DAT[15-18] -AS
         temp_bytes = struct.pack('>f', packet.temperature)
         message.extend(temp_bytes)
         
-        # Bus voltage (DAT[11-14]) - 32-bit float, big-endian
+        # Bus voltage (DAT[11-14]) - 32-bit float, big-endian  # Voltage should be DAT[7-10]  -AS
         voltage_bytes = struct.pack('>f', packet.bus_voltage)
         message.extend(voltage_bytes)
         
-        # Power consumption (DAT[15-18]) - 32-bit float, big-endian
+        # Power consumption (DAT[15-18]) - 32-bit float, big-endian  # Power should be DAT[11-14]  -AS
         power_bytes = struct.pack('>f', packet.power_consumption)
         message.extend(power_bytes)
         
@@ -168,18 +174,18 @@ class RWAMessageEncoder:
     
     def _build_status_byte(self, packet: RWAPacket) -> int:
         """Build status byte per ICD specification"""
-        status = 0
+        status = 0    # Status: Standby -AS
         
         # Bit 0: Start bit (always 0)
         # Bit 1: Reserved (always 0)
-        # Bit 2-6: Last command OpCode echo back (0 for telemetry)
-        # Bit 7: Fault status
+        # Bit 2-6: Last command OpCode echo back (0 for telemetry) # Where find -AS
+        # Bit 7: Fault status # Fault Status: 0 = No Fault, 1 = Fault status Flagged -AS
         if packet.status == RWAStatus.FAULT:
-            status |= 0x80
+            status |= 0x80                              # Not sure where this is coming from, not in ICD -AS
         
         # Bit 8: Current operation mode
         if packet.mode == RWAMode.STANDBY:
-            status |= 0x01
+            status |= 0x01    # Here, 0 = Operate MOde, 1 = Standby Mode -AS
         
         # Bit 9: Parity bit (even)
         # Bit 10: Stop bit (always 1)
@@ -189,7 +195,7 @@ class RWAMessageEncoder:
     def _build_health_status_word(self, packet: RWAPacket) -> int:
         """Build health & status word"""
         status = 0
-        
+        # For DAT[5] -AS
         # Bit 0: Over-current error flag
         if packet.motor_current > 9.76:  # Threshold from ICD
             status |= 0x01
@@ -219,7 +225,7 @@ class RWAMessageEncoder:
 class ReactionWheelEncoder:
     """Converts MATLAB RWA data to Honeywell format"""
     
-    def __init__(self, rwa_address: int = 0x01):
+    def __init__(self, rwa_address: int = 0x04):
         self.message_encoder = RWAMessageEncoder(rwa_address)
         self.message_counter = 0
         

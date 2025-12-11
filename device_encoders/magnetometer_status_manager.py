@@ -30,7 +30,7 @@ class MagnetometerStatusConfig:
     status: int = 0x00  # NORMAL
     message_type: int = 0x01  # MAGDATA
     temperature: float = 25.0  # °C
-    calibration_active: bool = False
+    calibration_active: bool = False  
     memory_error: bool = False
     communication_error: bool = False
     data_quality: float = 1.0  # 0.0 to 1.0
@@ -72,12 +72,12 @@ class MagnetometerStatusManager:
                 temperature=45.0,  # High temperature
                 calibration_active=False,
                 memory_error=False,
-                communication_error=True,  # Communication error
+                communication_error=True,  # Communication error 
                 data_quality=0.5  # Reduced quality
             ),
             MagnetometerStatusScenario.CALIBRATION_MODE: MagnetometerStatusConfig(
                 status=0x04,  # CALIBRATION_MODE
-                message_type=0x07,  # OPMODE
+                message_type=0x0F,  # OPMODE #Changed from 0x07 to 0x0F to match ICD
                 temperature=25.0,
                 calibration_active=True,
                 memory_error=False,

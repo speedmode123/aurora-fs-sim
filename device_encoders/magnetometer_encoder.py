@@ -24,17 +24,18 @@ class MagnetometerStatus(Enum):
     CALIBRATION_MODE = 0x04
     MEMORY_ERROR = 0x05
     COMMUNICATION_ERROR = 0x06
+    # I can't find this in the ICD -AS
 
 class MessageType(Enum):
     """Message types from ICD specifications"""
     MAGDATA = 0x01
-    MAGTEMP = 0x02
-    MAGID = 0x03
-    MEMREAD = 0x04
-    MEMWRITE = 0x05
-    MEMCMD = 0x06
-    OPMODE = 0x07
-    STATUS = 0x08
+    MAGTEMP = 0x05 #Changed from 02 to 05 based of ICD....
+    MAGID = 0x02 #Changed from 03 to 02
+    MEMREAD = 0x0C #Changed from 04 to 0C
+    MEMWRITE = 0x0D #Changed from 05 to 0d
+    MEMCMD = 0x0E #Changed from 06 to 0E
+    OPMODE = 0x0F #Changed from 07 to 0F
+    STATUS = 0x08 # Dont know where this comes from
 
 @dataclass
 class MagnetometerData:
@@ -62,6 +63,7 @@ class CANEncoder:
     # CAN Message IDs from ICD56011974-CAN
     CAN_DATA_ID = 0x101
     CAN_TEMP_ID = 0x105
+    # I dont see this in the ICD either -AS
     
     @classmethod
     def encode_magdata(cls, packet: MagnetometerPacket) -> Tuple[int, bytes]:
@@ -95,8 +97,8 @@ class CANEncoder:
         Returns:
             Tuple of (CAN_ID, data_bytes)
         """
-        # Convert temperature to 16-bit signed integer
-        # Scale factor: 1°C per LSB
+        # Convert temperature to 16-bit signed integer #where find
+        # Scale factor: 1°C per LSB #where find
         temp_int = int(packet.temperature) & 0xFFFF
         
         # Pack as big-endian per ICD specification
@@ -237,7 +239,8 @@ class MagnetometerEncoder:
         # Check for reasonable magnetic field values
         field_magnitude = (packet.x_field**2 + packet.y_field**2 + packet.z_field**2)**0.5
         
-        # Earth's magnetic field is typically 25,000-65,000 nT
+        # Earth's magnetic field is typically 25,000-65,000 nT 
+        # not sure where the error and warning values are coming from -AS
         if field_magnitude < 10000 or field_magnitude > 100000:
             packet.status = MagnetometerStatus.ERROR
         elif field_magnitude < 20000 or field_magnitude > 80000:
@@ -246,6 +249,8 @@ class MagnetometerEncoder:
             packet.status = MagnetometerStatus.NORMAL
         
         # Check temperature range
+        # Acceptance range is -25 - +45, qualification range is -25 - +45 unit survival is -30 - +70 ,
+        # not sure where -40 - +85 is coming from -AS
         if packet.temperature < -40 or packet.temperature > 85:
             packet.status = MagnetometerStatus.CRITICAL
     
