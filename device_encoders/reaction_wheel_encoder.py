@@ -208,7 +208,7 @@ class RWAMessageEncoder:
         if packet.bus_voltage < 19.0:  # Threshold from ICD
             status |= 0x04
         
-        # Bit 5: Angular position error flag
+        # Bit 5: Angular position error flag # Should there be an if statement here? -AS
         # Bit 7: Wheel over speed flag
         if packet.wheel_speed > 4200.0:  # Threshold from ICD
             status |= 0x80
@@ -225,7 +225,7 @@ class RWAMessageEncoder:
 class ReactionWheelEncoder:
     """Converts MATLAB RWA data to Honeywell format"""
     
-    def __init__(self, rwa_address: int = 0x04):
+    def __init__(self, rwa_address: int = 0x04): # Changed from 0x01 to 0x04 to match Honeywell ICD
         self.message_encoder = RWAMessageEncoder(rwa_address)
         self.message_counter = 0
         
@@ -293,7 +293,9 @@ class ReactionWheelEncoder:
             packet.status = RWAStatus.NORMAL
         
         # Determine mode based on wheel speed
-        if abs(packet.wheel_speed) < 10.0:  # Threshold for standby
+        if abs(packet.wheel_speed) < 10.0:  # Threshold for standby # In the ICD this value is the time to transition between
+        # standby and operational modes, this is not a value in rpm but a value in seconds
+        # Normal operating speed for the RWA is +/-3600 RPM
             packet.mode = RWAMode.STANDBY
         else:
             packet.mode = RWAMode.OPERATE
@@ -399,7 +401,7 @@ def main():
         if packet:
             print(f"\nPacket details:")
             print(f"Wheel speed: {packet.wheel_speed:.1f} RPM")
-            print(f"Motor current: {packet.motor_current:.2f} A")
+            print(f"Motor current: {packet.motor_current:.2f} A") # Does there need to be 2 digits after decimal here? -AS
             print(f"Temperature: {packet.temperature:.1f}°C")
             print(f"Bus voltage: {packet.bus_voltage:.1f} V")
             print(f"Power consumption: {packet.power_consumption:.1f} W")

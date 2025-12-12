@@ -204,13 +204,13 @@ class RWAStatusManager:
         
         if config.temperature_fault:
             # Temperature affects motor performance
-            temp_factor = max(0.0, 1.0 - (config.temperature - 25.0) / 30.0)
+            temp_factor = max(0.0, 1.0 - (config.temperature - 25.0) / 30.0) # Not sure where this ormula is coming from -AS
             wheel_speed *= temp_factor
             motor_current *= temp_factor
         
         if config.voltage_fault:
             # Low voltage affects performance
-            voltage_factor = max(0.0, config.bus_voltage / 28.0)
+            voltage_factor = max(0.0, config.bus_voltage / 28.0)  # Nor this one -AS
             wheel_speed *= voltage_factor
             motor_current *= voltage_factor
         
