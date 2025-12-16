@@ -124,7 +124,7 @@ Use this mode when you have a real MATLAB system:
 
 2. Connect your MATLAB system to the configured ports
 
-## Troubleshooting
+### Troubleshooting
 
 ### Common Issues
 
